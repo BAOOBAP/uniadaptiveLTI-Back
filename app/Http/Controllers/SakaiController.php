@@ -1148,7 +1148,7 @@ class SakaiController extends Controller
      * 
      * @return array
      */
-    public function exportVersion(Request $request, object $sessionData)
+    public function exportVersionSakai(Request $request, object $sessionData)
     {
         // header('Access-Control-Allow-Origin: *');
         $nodes = $request->nodes;

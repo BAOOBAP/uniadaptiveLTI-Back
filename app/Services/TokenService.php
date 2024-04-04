@@ -2,17 +2,21 @@
 
 namespace App\Services;
 
-use App\Models\LtiInfo;
+use App\Libraries\ApiRequest;
 use App\Repositories\LtiInstanceRepository;
 use Carbon\Carbon;
 
 class TokenService
 {
     private LtiInstanceRepository $ltiRepository;
+    private ApiRequest $apiRequest;
+    private ResponseService $responseService;
 
-    public function __construct(LtiInstanceRepository $ltiRepository)
+    public function __construct(LtiInstanceRepository $ltiRepository, ApiRequest $apiRequest, ResponseService $responseService)
     {
         $this->ltiRepository = $ltiRepository;
+        $this->apiRequest = $apiRequest;
+        $this->responseService = $responseService;
     }
 
     /**
@@ -42,10 +46,7 @@ class TokenService
      */
     public function checkExpiredToken(string $token): bool
     {
-        $now = time();
-        return LtiInfo::where('token', '=', $token)
-            ->where('expires_at', '>=', $now)
-            ->exists();
+        return $this->ltiRepository->checkExpiredToken($token);
     }
     /**
      * @param string $platform
@@ -71,5 +72,46 @@ class TokenService
             default:
                 return '';
         }
+    }
+
+    /**
+     * @param string $url_lms
+     * @param string $platform
+     * 
+     * @return string
+     */
+    public function getLmsToken(string $url_lms, string $platform): string|null
+    {
+        $response = null;
+        if (config()->has('multiple_lms_config')) {
+            $multiple_lms_config = config('multiple_lms_config.lms_data');
+            foreach ($multiple_lms_config as $lms_data) {
+                if ($lms_data['url'] == $url_lms) {
+                    $response = $this->getTokenByPlatform($platform, $lms_data);
+                }
+            }
+        }
+
+        return $response;
+    }
+    /**
+     * Function that returns the name (if it exists) of the url added in the function
+     * 
+     * @param string $url_lms
+     * 
+     * @return array
+     */
+    public function getLmsName(string $url_lms): string|null
+    {
+        $response = null;
+        // Obtains from the multiple_lms_config.php configuration the lms_data that contains all the LMS grouped by url and token
+        $multiple_lms_config = config('multiple_lms_config.lms_data');
+        foreach ($multiple_lms_config as $name => $lms_data) {
+            if ($lms_data['url'] == $url_lms) {
+                $response = $name;
+                break;
+            }
+        }
+        return $response;
     }
 }
